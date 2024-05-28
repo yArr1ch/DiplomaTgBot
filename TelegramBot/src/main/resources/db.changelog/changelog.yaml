@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: db.changelog/frequency_of_pulling.sql
+  - include:
+      file: db.changelog/qrtz_job_details.sql
+  - include:
+      file: db.changelog/qrtz_triggers.sql
