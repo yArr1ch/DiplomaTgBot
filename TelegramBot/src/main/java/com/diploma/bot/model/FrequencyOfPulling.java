@@ -15,8 +15,8 @@ import lombok.NoArgsConstructor;
 public class FrequencyOfPulling {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(name = "user_id")
     private String userId;

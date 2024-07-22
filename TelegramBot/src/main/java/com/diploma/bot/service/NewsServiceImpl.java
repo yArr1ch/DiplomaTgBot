@@ -1,5 +1,7 @@
 package com.diploma.bot.service;
 
+import com.diploma.bot.model.NewsItem;
+import com.diploma.bot.repository.NewsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
@@ -10,16 +12,19 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class NewsServiceImpl implements NewsService {
 
-    //private final NewsRepository newsRepository;
+    private final NewsRepository newsRepository;
 
     private final Map<String, String> map = new HashMap<>();
     private static final String LINK_REGEX = "href=\"(https?://.*?)\"";
@@ -96,9 +101,13 @@ public class NewsServiceImpl implements NewsService {
 
 
     private void checkNewsForDuplication() {
-        //List<NewsItem> newsList = newsRepository.findAll();
+        Set<String> titles = newsRepository.findAll().stream().map(NewsItem::getTitle).collect(Collectors.toSet());
+        titles.forEach(t -> {
+            if (map.containsValue(t)) {
 
-        //compare it and use in each method upper
+            }
+        });
+
     }
 
     private void newsExtraction(String newsUrl) throws IOException {
@@ -115,6 +124,7 @@ public class NewsServiceImpl implements NewsService {
 
             if (!map.containsKey(url)) {
                 map.put(url, title);
+                newsRepository.saveAndFlush(new NewsItem(url, title));
             }
         }
     }

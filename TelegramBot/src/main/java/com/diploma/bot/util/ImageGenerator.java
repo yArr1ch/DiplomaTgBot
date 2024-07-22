@@ -24,22 +24,18 @@ public class ImageGenerator {
         return createGeneralImage(1100, 2100, stocks);
     }
 
-    //use func
     public static byte[] generateImageFromRealEstate(List<RealEstate> realEstates) {
         return createGeneralImage(1080, 2060, realEstates);
     }
 
-    //use func
     public static byte[] generateImageFromEnergies(List<Energy> energies) {
         return createGeneralImage(1080, 2060, energies);
     }
 
-    //use func
     public static byte[] generateImageFromTechnologies(List<Technology> technologies) {
         return createGeneralImage(1080, 2100, technologies);
     }
 
-    //use func
     public static byte[] generateImageFromFinances(List<Finance> finances) {
         return createGeneralImage(1080, 2100, finances);
     }
@@ -196,6 +192,9 @@ public class ImageGenerator {
 
         BufferedImage image = new BufferedImage(imageWidth, imageLength, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = image.createGraphics();
+
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         g2d.setColor(Color.WHITE);
         g2d.fillRect(0, 0, imageWidth, imageLength);

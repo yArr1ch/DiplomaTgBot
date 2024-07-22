@@ -1,4 +1,3 @@
-/*
 package com.diploma.bot.repository;
 
 import com.diploma.bot.model.NewsItem;
@@ -8,4 +7,4 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface NewsRepository extends JpaRepository<NewsItem, String> {
 }
-*/
+

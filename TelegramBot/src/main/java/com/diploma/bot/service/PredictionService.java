@@ -31,22 +31,23 @@ public class PredictionService {
 
         for (Element row : rows) {
             Elements columns = row.select("td");
-            String date = columns.get(0).text().trim(); // Date
-            String open = columns.get(1).text().trim(); // Open
-            String high = columns.get(2).text().trim(); // High
-            String low = columns.get(3).text().trim(); // Low
-            String close = columns.get(4).text().trim(); // Close
-            String adjClose = columns.get(5).text().trim(); // Adj Close
-            String volume = columns.get(6).text().trim(); // Volume
+            if (columns.size() == 7) {
+                String date = columns.get(0).text().trim();
+                String open = columns.get(1).text().trim();
+                String high = columns.get(2).text().trim();
+                String low = columns.get(3).text().trim();
+                String close = columns.get(4).text().trim();
+                String adjClose = columns.get(5).text().trim();
+                String volume = columns.get(6).text().trim();
 
-            // Append the values to the formatted result
-            formattedResult.append(date).append("\t")
-                    .append(open).append("\t")
-                    .append(high).append("\t")
-                    .append(low).append("\t")
-                    .append(close).append("\t")
-                    .append(adjClose).append("\t")
-                    .append(volume).append("\n");
+                formattedResult.append(date).append("\t")
+                        .append(open).append("\t")
+                        .append(high).append("\t")
+                        .append(low).append("\t")
+                        .append(close).append("\t")
+                        .append(adjClose).append("\t")
+                        .append(volume).append("\n");
+            }
         }
         String predictionResponse = returnResponse(formattedResult, action);
 
@@ -55,12 +56,12 @@ public class PredictionService {
             log.info("Returned predicted close price: {}", predictionResponse);
 
             result = "Predicted close price for " + value + "\n" +
-                    predictionResponse.replaceAll("[\"{}]", "").substring(0, 34);
+                    predictionResponse.replaceAll("[\"{}]", "").substring(0, 34).trim();
         } else {
             log.info("Returned analyzed statement: {}", predictionResponse);
 
             result = "Analysis for " + value + "\n" +
-                    predictionResponse.replaceAll("[\"{}]", "");
+                    predictionResponse.replaceAll("[\"{}]", "").trim();
         }
         return result;
     }

@@ -1,6 +1,7 @@
 package com.diploma.bot.application;
 
 import com.diploma.bot.config.BotProperties;
+import com.diploma.bot.model.Stock;
 import com.diploma.bot.service.QuartzService;
 import com.diploma.bot.controller.*;
 import com.diploma.bot.service.FrequencyOfPullingService;
@@ -9,6 +10,7 @@ import com.diploma.bot.util.ImageGenerator;
 import com.diploma.bot.util.KeyboardFactory;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.quartz.SchedulerException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -27,7 +29,7 @@ import java.util.Set;
 
 @Slf4j
 @Component
-public class TradeBot extends TelegramLongPollingBot implements BotResponse {
+public class TradeBot extends TelegramLongPollingBot {
 
     private final BotProperties botProperties;
     private final StockController stockController;
@@ -83,8 +85,6 @@ public class TradeBot extends TelegramLongPollingBot implements BotResponse {
         return botProperties.getUsername();
     }
 
-    //default one
-    @Override
     public void sendResponse(Long chatId, String message) {
         SendMessage response = new SendMessage();
         response.setChatId(chatId.toString());
@@ -107,15 +107,23 @@ public class TradeBot extends TelegramLongPollingBot implements BotResponse {
             this.userId = update.getMessage().getFrom().getId().toString();
 
             if (!botStarted) {
-                handleBotStart(chatId);
-            } else if (selectingSectors) {
                 try {
-                    handleSubActionSelection(chatId, text);
+                    handleBotStart(chatId);
                 } catch (SchedulerException e) {
                     throw new RuntimeException(e);
                 }
+            } else if (selectingSectors) {
+                try {
+                    handleSubActionSelection(chatId, text);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             } else if (waitingForFrequencyValue) {
-                processReceivedFrequencyValue(chatId, text);
+                try {
+                    processReceivedFrequencyValue(chatId, text);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             } else if (waitingForPredictionValue) {
                 try {
                     processReceivedPredictedValue(chatId, text);
@@ -138,7 +146,7 @@ public class TradeBot extends TelegramLongPollingBot implements BotResponse {
         }
     }
 
-    private void handleBotStart(Long chatId) {
+    private void handleBotStart(Long chatId) throws SchedulerException {
         botStarted = true;
         sendActionsKeyboard(chatId);
         runExistingJobs();
@@ -148,12 +156,11 @@ public class TradeBot extends TelegramLongPollingBot implements BotResponse {
         selectingSectors = false;
         switch (text) {
             case "Stocks: Most Active", "Stocks: Gainers", "Stocks: Losers", "Currency", "Futures",
-                 "Real Estate", "Energy", "Technology", "Finance", "Crypto" ->
-                    chooseSectors(chatId, text);
+                    "Real Estate", "Energy", "Technology", "Finance", "Crypto" -> chooseSectors(chatId, text);
 
             case "Stocks: Most Active Frequency", "Stocks: Gainers Frequency", "Stocks: Losers Frequency",
-                 "Currency Frequency", "Futures Frequency", "Real Estate Frequency", "Energy Frequency",
-                 "Technology Frequency", "Finance Frequency", "Crypto Frequency" ->
+                    "Currency Frequency", "Futures Frequency", "Real Estate Frequency", "Energy Frequency",
+                    "Technology Frequency", "Finance Frequency", "Crypto Frequency" ->
                     setFrequencyOfCurrentSector(text, chatId);
 
             default -> {
@@ -176,10 +183,14 @@ public class TradeBot extends TelegramLongPollingBot implements BotResponse {
             case "Get Prediction" -> {
                 requestPrediction(chatId);
             }
+            case "List of existing Frequency" -> {
+                getListOfFrequencies(chatId);
+            }
             default -> {
             }
         }
     }
+
     private void requestAnalyze(Long chatId) {
         sendResponse(chatId, "Please enter the symbol of sector to analyze:");
         waitingForAnalyzeValue = true;
@@ -210,10 +221,15 @@ public class TradeBot extends TelegramLongPollingBot implements BotResponse {
     }
 
     public void processReceivedFrequencyValue(Long chatId, String value) {
-        this.frequency = value;
-        waitingForFrequencyValue = false;
-        selectingSectors = true;
-        sendResponse(chatId, KeyboardFactory.selectSectorsToSetFrequency(), "Frequency was selected");
+        if (StringUtils.isNumeric(value)) {
+            this.frequency = value;
+            waitingForFrequencyValue = false;
+            selectingSectors = true;
+            sendResponse(chatId, KeyboardFactory.selectSectorsToSetFrequency(), "Frequency was selected");
+        } else {
+            waitingForFrequencyValue = false;
+            sendResponse(chatId, "Value is not numeric, please enter a valid digit");
+        }
     }
 
     public void chooseSectors(Long chatId, String sectors) {
@@ -263,13 +279,10 @@ public class TradeBot extends TelegramLongPollingBot implements BotResponse {
         }
     }
 
-    @Override
     public void sendActionsKeyboard(Long chatId) {
         sendResponse(chatId, KeyboardFactory.chooseActions(), "Please choose some action");
     }
 
-    // for category selection
-    @Override
     public void sendResponse(Long chatId, ReplyKeyboard key, String text) {
         SendMessage response = new SendMessage();
         response.setChatId(chatId.toString());
@@ -283,7 +296,6 @@ public class TradeBot extends TelegramLongPollingBot implements BotResponse {
         }
     }
 
-    @Override
     public void sendImageResponse(Long chatId, byte[] bytes, String fileName) {
         log.info("Sending image of {} to chat with id: {}", fileName.split("\\.")[0], chatId);
         try {
@@ -298,24 +310,37 @@ public class TradeBot extends TelegramLongPollingBot implements BotResponse {
         }
     }
 
-    public void setFrequencyOfCurrentSector(String category, Long chatId) {
-        //frequencyOfPullingService.createFrequencyRecord(userId, category, frequency, String.valueOf(chatId));
-        quartzService.setFrequencyOfCurrentValue(category, Integer.parseInt(frequency), userId);
+    public void setFrequencyOfCurrentSector(String category, Long chatId) throws SchedulerException {
+        String dbResponse = frequencyOfPullingService.createFrequencyRecord(userId, category, frequency,
+                String.valueOf(chatId));
 
-        sendResponse(chatId, "Frequency of " + frequency + " was successfully set for " + category);
+        if (dbResponse.equals("Completed")) {
+            quartzService.setFrequencyOfCurrentValue(category, Integer.parseInt(frequency));
+
+            sendResponse(chatId, "Frequency of " + frequency + " was successfully set for " + category);
+            sendActionsKeyboard(chatId);
+            log.warn("values were passed to db {}, {}, {}", userId, category, frequency);
+        }
+        sendResponse(chatId, dbResponse);
         sendActionsKeyboard(chatId);
-        log.warn("values were passed to db {}, {}, {}", userId, category, frequency);
     }
 
     public void scheduledExecution(Long chatId, byte[] data, String category) {
         sendImageResponse(chatId, data, category + ".png");
     }
 
-    private void runExistingJobs() {
+    private void getListOfFrequencies(Long chatId) {
+        String result = frequencyOfPullingService.getAllFrequencies(userId);
+
+        sendResponse(chatId, result);
+        sendActionsKeyboard(chatId);
+    }
+
+    private void runExistingJobs() throws SchedulerException {
         quartzService.runExistingJobs(userId);
     }
 
-    @Scheduled(fixedRate = 600000) // Run every 10 minutes
+    //@Scheduled(fixedRate = 600000) // Run every 10 minutes
     private void sendNews() throws IOException {
         Map<String, String> news = newsService.runAllNews();
         Set<String> links = news.keySet();
