@@ -47,6 +47,7 @@ public class KeyboardFactory {
         row.add("Analyze"); //all changes that been, on current value or similar and provide explanation
         row.add("Get Prediction"); // predict baseed on data, provide all values
         row.add("Set Frequency");
+        row.add("List of existing Frequency");
         return new ReplyKeyboardMarkup(List.of(row));
     }
 
